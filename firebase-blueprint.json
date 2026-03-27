@@ -1,0 +1,108 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A product available in the store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "isPopular": { "type": "boolean" },
+        "comboItems": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "price", "imageUrl", "category"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "deliveryLocation": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "total": { "type": "number" },
+        "status": { "type": "string" },
+        "date": { "type": "string" }
+      },
+      "required": ["id", "customerName", "customerPhone", "deliveryLocation", "items", "total", "status", "date"]
+    },
+    "DeliveryLocation": {
+      "title": "DeliveryLocation",
+      "description": "A delivery location and fee",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "fee": { "type": "number" }
+      },
+      "required": ["id", "name", "fee"]
+    },
+    "StoreSettings": {
+      "title": "StoreSettings",
+      "description": "Settings for the store",
+      "type": "object",
+      "properties": {
+        "logoUrl": { "type": "string" }
+      }
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A product review from a customer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "date": { "type": "string" },
+        "approved": { "type": "boolean" }
+      },
+      "required": ["id", "productId", "customerName", "rating", "comment", "date"]
+    }
+  },
+  "firestore": {
+    "products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Store products"
+    },
+    "orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer orders"
+    },
+    "delivery_locations/{locationId}": {
+      "schema": { "$ref": "#/entities/DeliveryLocation" },
+      "description": "Delivery locations and fees"
+    },
+    "settings/store": {
+      "schema": { "$ref": "#/entities/StoreSettings" },
+      "description": "Store settings"
+    },
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles and roles"
+    },
+    "reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Product reviews"
+    }
+  }
+}
