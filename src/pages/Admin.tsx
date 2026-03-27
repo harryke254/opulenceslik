@@ -785,7 +785,7 @@ export default function Admin() {
               </button>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
               {products.length === 0 ? (
                 <div className="sm:col-span-2 xl:col-span-3 text-center py-16 border-2 border-dashed border-gray-100 rounded-[2rem]">
                   <Package className="mx-auto h-12 w-12 text-gray-200 mb-4" />

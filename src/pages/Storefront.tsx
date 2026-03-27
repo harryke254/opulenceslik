@@ -312,6 +312,87 @@ export default function Storefront() {
         </div>
       </section>
 
+      {/* Popular Categories Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-12 flex items-center justify-between">
+            <h2 className="text-2xl font-serif font-bold text-[#110A08] tracking-tight">Popular categories</h2>
+            <button 
+              onClick={() => scrollToSection('shop')}
+              className="text-[10px] uppercase tracking-widest font-bold text-[#D4AF37] border-b border-[#D4AF37]/30 pb-1"
+            >
+              View All
+            </button>
+          </div>
+          <div className="flex overflow-x-auto pb-8 gap-8 no-scrollbar snap-x">
+            {[
+              ...categoryImages,
+              { id: 'all', label: 'All Glow', url: 'https://picsum.photos/seed/all/400/500' }
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => {
+                  setActiveCategory(cat.id);
+                  scrollToSection('shop');
+                }}
+                className="flex-shrink-0 w-28 sm:w-36 snap-start group text-center"
+              >
+                <div className="aspect-square rounded-full overflow-hidden mb-4 bg-gray-100 border-2 border-transparent group-hover:border-[#D4AF37] transition-all duration-500 shadow-sm group-hover:shadow-xl">
+                  <img src={cat.url} alt={cat.label} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
+                </div>
+                <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-500 group-hover:text-[#110A08] transition-colors">{cat.label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Best Sellers Section */}
+      <section className="py-20 bg-[#FAFAFA]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-12 flex items-center justify-between">
+            <div className="max-w-2xl">
+              <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-[#D4AF37] mb-4 block">Most Loved</span>
+              <h2 className="text-3xl md:text-5xl font-serif italic text-[#110A08]">Best Sellers</h2>
+            </div>
+            <button 
+              onClick={() => scrollToSection('shop')}
+              className="text-[10px] uppercase tracking-widest font-bold text-[#D4AF37] border-b border-[#D4AF37]/30 pb-1"
+            >
+              View All Collection
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
+            {products.filter(p => p.isPopular).slice(0, 4).map((product, i) => (
+              <motion.div 
+                key={product.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.8 }}
+                className="group cursor-pointer"
+                onClick={() => setSelectedProduct(product)}
+              >
+                <div className="relative overflow-hidden rounded-2xl aspect-[4/5] mb-4 bg-white shadow-sm group-hover:shadow-xl transition-all duration-500">
+                  <img 
+                    src={product.imageUrl} 
+                    alt={product.name} 
+                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-[#110A08]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-sm sm:text-lg font-serif mb-1 text-[#110A08] group-hover:text-[#D4AF37] transition-colors">{product.name}</h3>
+                  <p className="text-xs font-bold text-[#D4AF37]">{formatPrice(product.price)}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Shop Section */}
       <section id="shop" className="py-16 md:py-24 bg-white relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -432,41 +513,6 @@ export default function Storefront() {
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      </section>
-
-      {/* Popular Categories Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-12 flex items-center justify-between">
-            <h2 className="text-2xl font-serif font-bold text-[#110A08] tracking-tight">Popular categories</h2>
-            <button 
-              onClick={() => scrollToSection('shop')}
-              className="text-[10px] uppercase tracking-widest font-bold text-[#D4AF37] border-b border-[#D4AF37]/30 pb-1"
-            >
-              View All
-            </button>
-          </div>
-          <div className="flex overflow-x-auto pb-8 gap-8 no-scrollbar snap-x">
-            {[
-              ...categoryImages,
-              { id: 'all', label: 'All Glow', url: 'https://picsum.photos/seed/all/400/500' }
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  setActiveCategory(cat.id);
-                  scrollToSection('shop');
-                }}
-                className="flex-shrink-0 w-28 sm:w-36 snap-start group text-center"
-              >
-                <div className="aspect-square rounded-full overflow-hidden mb-4 bg-gray-100 border-2 border-transparent group-hover:border-[#D4AF37] transition-all duration-500 shadow-sm group-hover:shadow-xl">
-                  <img src={cat.url} alt={cat.label} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" referrerPolicy="no-referrer" />
-                </div>
-                <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-500 group-hover:text-[#110A08] transition-colors">{cat.label}</p>
-              </button>
-            ))}
           </div>
         </div>
       </section>
