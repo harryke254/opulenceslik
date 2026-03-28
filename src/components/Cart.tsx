@@ -111,6 +111,18 @@ export default function Cart() {
         status: status
       };
       await saveOrder(newOrder);
+      
+      // Send email receipt
+      try {
+        await fetch('/api/send-receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: newOrder, customerEmail })
+        });
+      } catch (error) {
+        console.error('Failed to send email receipt:', error);
+      }
+
       setConfirmedOrder(newOrder);
       setOrderNumber(orderNum);
       setShowReceipt(true);
@@ -176,6 +188,7 @@ export default function Cart() {
                   </div>
                   <h2 className="text-4xl font-serif italic mb-2">Order Confirmed</h2>
                   <p className="text-[#D4AF37] text-[10px] uppercase tracking-[0.3em] font-bold">Thank you for choosing Opulence Slik</p>
+                  <p className="text-white/60 text-[9px] mt-4 uppercase tracking-widest">A receipt has been sent to your email</p>
                 </div>
 
                 <div className="p-10 space-y-10">
