@@ -52,7 +52,7 @@ const DEFAULT_HERO_CONTENT = {
 const DEFAULT_CATEGORY_IMAGES: CategoryImage[] = [
   { id: 'face', label: 'Face Care', url: 'https://image2url.com/r2/default/images/1774387277140-b194b186-425a-4c9b-b533-68730254dd3b.jpg' },
   { id: 'body', label: 'Body Care', url: 'https://image2url.com/r2/default/images/1774387247714-3d94387b-425a-4c9b-b533-68730254dd3b.jpg' },
-  { id: 'oils', label: 'Luxury Oils', url: 'https://image2url.com/r2/default/images/1774387214771-4d94387b-425a-4c9b-b533-68730254dd3b.jpg' },
+  { id: 'oils', label: 'Treatment Oils', url: 'https://image2url.com/r2/default/images/1774387214771-4d94387b-425a-4c9b-b533-68730254dd3b.jpg' },
   { id: 'combos', label: 'Value Combos', url: 'https://image2url.com/r2/default/images/1774387184771-5d94387b-425a-4c9b-b533-68730254dd3b.jpg' },
   { id: 'wigs', label: 'Premium Wigs', url: 'https://picsum.photos/seed/wigs/400/500' }
 ];
