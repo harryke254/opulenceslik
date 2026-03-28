@@ -114,13 +114,22 @@ export default function Cart() {
       
       // Send email receipt
       try {
-        await fetch('/api/send-receipt', {
+        const emailResponse = await fetch('/api/send-receipt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ order: newOrder, customerEmail })
         });
+        
+        if (!emailResponse.ok) {
+          const errorData = await emailResponse.json();
+          console.error('Email receipt failed:', errorData);
+          // We don't alert the user here to avoid interrupting the success flow, 
+          // but we log it for debugging.
+        } else {
+          console.log('Email receipt sent successfully');
+        }
       } catch (error) {
-        console.error('Failed to send email receipt:', error);
+        console.error('Failed to send email receipt (network error):', error);
       }
 
       setConfirmedOrder(newOrder);

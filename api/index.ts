@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import nodemailer from "nodemailer";
+import "dotenv/config";
 
 const app = express();
 app.use(express.json());
@@ -12,26 +13,41 @@ app.get("/api/health", (req, res) => {
 
 app.post("/api/send-receipt", async (req, res) => {
   const { order, customerEmail } = req.body;
+  console.log(`Attempting to send email to ${customerEmail} for order ${order?.orderNumber}`);
 
   if (!order || !customerEmail) {
+    console.error("Missing order or customer email in request body");
     return res.status(400).json({ error: "Missing order or customer email" });
   }
 
-  const emailUser = process.env.EMAIL_USER || "opulenceslik7@gmail.com";
-  const emailPass = process.env.EMAIL_PASS;
+  const emailUser = (process.env.EMAIL_USER || "opulenceslik7@gmail.com").trim();
+  const emailPass = process.env.EMAIL_PASS?.trim();
 
   if (!emailPass) {
-    console.error("EMAIL_PASS is not configured");
-    return res.status(500).json({ error: "Email service not configured" });
+    console.error("EMAIL_PASS environment variable is NOT set");
+    return res.status(500).json({ error: "Email service not configured (missing password)" });
   }
 
+  console.log(`Using email user: ${emailUser}`);
+
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true, // use SSL
     auth: {
       user: emailUser,
       pass: emailPass,
     },
   });
+
+  // Verify connection configuration
+  try {
+    await transporter.verify();
+    console.log("Nodemailer transporter verified successfully");
+  } catch (verifyError) {
+    console.error("Nodemailer verification failed:", verifyError);
+    return res.status(500).json({ error: "Failed to connect to email service", details: verifyError instanceof Error ? verifyError.message : String(verifyError) });
+  }
 
   const itemsHtml = order.items.map((item: any) => `
     <tr>
