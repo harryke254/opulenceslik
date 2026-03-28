@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Product, Order, OrderStatus, DeliveryLocation, Review } from '../types';
-import { getProducts, saveProduct, deleteProduct as deleteProductFromDb, formatPrice, getOrders, updateOrderStatus as updateOrderStatusInDb, deleteOrder as deleteOrderFromDb, getDeliveryLocations, saveDeliveryLocations, deleteDeliveryLocation, handleFirestoreError, OperationType } from '../lib/storage';
+import { Product, Order, OrderStatus, Review } from '../types';
+import { getProducts, saveProduct, deleteProduct as deleteProductFromDb, formatPrice, getOrders, updateOrderStatus as updateOrderStatusInDb, deleteOrder as deleteOrderFromDb, handleFirestoreError, OperationType } from '../lib/storage';
 import { Trash2, Plus, ArrowLeft, Edit2, LogIn, Lock, Package, Image as ImageIcon, Save, X, Settings, Upload, FileText, Box, Clock, Truck, CheckCircle2, XCircle, LogOut, Download, ShoppingBag, Star, MessageSquare, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
@@ -32,9 +32,6 @@ export default function Admin() {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [locations, setLocations] = useState<DeliveryLocation[]>([]);
-  const [newLocName, setNewLocName] = useState('');
-  const [newLocFee, setNewLocFee] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'add-product' | 'orders' | 'reviews' | 'settings'>('dashboard');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -202,7 +199,6 @@ export default function Admin() {
   useEffect(() => {
     let unsubscribeProducts: () => void;
     let unsubscribeOrders: () => void;
-    let unsubscribeLocations: () => void;
     let unsubscribeReviews: () => void;
 
     if (isAdmin) {
@@ -220,12 +216,6 @@ export default function Admin() {
         handleFirestoreError(error, OperationType.GET, 'orders');
       });
       
-      unsubscribeLocations = onSnapshot(collection(db, 'delivery_locations'), (snapshot) => {
-        setLocations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeliveryLocation)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.GET, 'delivery_locations');
-      });
-      
       const reviewsQuery = query(collection(db, 'reviews'), orderBy('date', 'desc'));
       unsubscribeReviews = onSnapshot(reviewsQuery, (snapshot) => {
         setReviews(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Review)));
@@ -237,7 +227,6 @@ export default function Admin() {
     return () => {
       if (unsubscribeProducts) unsubscribeProducts();
       if (unsubscribeOrders) unsubscribeOrders();
-      if (unsubscribeLocations) unsubscribeLocations();
       if (unsubscribeReviews) unsubscribeReviews();
     };
   }, [isAdmin]);
@@ -350,21 +339,6 @@ export default function Admin() {
   const handleDeleteOrder = async (orderId: string) => {
     if (window.confirm('Are you sure you want to delete this order?')) {
       await deleteOrderFromDb(orderId);
-    }
-  };
-
-  const handleAddLocation = async () => {
-    if (newLocName && newLocFee !== '') {
-      const updated = [...locations, { id: Date.now().toString(), name: newLocName, fee: Number(newLocFee) }];
-      await saveDeliveryLocations(updated);
-      setNewLocName('');
-      setNewLocFee('');
-    }
-  };
-
-  const handleDeleteLocation = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this delivery location?')) {
-      await deleteDeliveryLocation(id);
     }
   };
 
@@ -1184,63 +1158,6 @@ export default function Admin() {
               </div>
             </div>
 
-            {/* Delivery Locations Settings */}
-            <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
-                  <Truck size={24} />
-                </div>
-                <h2 className="text-xl font-serif font-bold">Delivery Locations</h2>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="max-h-[300px] overflow-y-auto no-scrollbar space-y-3 pr-1">
-                  {locations.map(loc => (
-                    <div key={loc.id} className="flex justify-between items-center p-4 border border-gray-50 rounded-2xl bg-gray-50/50">
-                      <div>
-                        <p className="font-bold text-sm text-[#110A08]">{loc.name}</p>
-                        <p className="text-[10px] uppercase tracking-widest font-bold text-[#D4AF37] mt-0.5">{formatPrice(loc.fee)}</p>
-                      </div>
-                      <button 
-                        onClick={() => handleDeleteLocation(loc.id)} 
-                        className="text-gray-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-xl transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="pt-6 border-t border-gray-100">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-3">Add New Location</p>
-                  <div className="space-y-3">
-                    <input 
-                      type="text" 
-                      placeholder="Name (e.g. Karen)" 
-                      className="w-full px-4 py-3 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] outline-none bg-gray-50/50" 
-                      value={newLocName} 
-                      onChange={e => setNewLocName(e.target.value)} 
-                    />
-                    <div className="flex gap-2">
-                      <input 
-                        type="number" 
-                        placeholder="Fee" 
-                        className="flex-1 px-4 py-3 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37] outline-none bg-gray-50/50" 
-                        value={newLocFee} 
-                        onChange={e => setNewLocFee(e.target.value)} 
-                      />
-                      <button 
-                        onClick={handleAddLocation} 
-                        className="px-4 py-3 bg-[#110A08] text-white rounded-xl hover:bg-gray-800 transition-colors"
-                      >
-                        <Plus size={20} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Price Filters Settings */}
             <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-8">
@@ -1609,7 +1526,7 @@ export default function Admin() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400 font-light">Zone</span>
-                            <span className="font-medium">{order.deliveryZone === 'cbd' ? 'Nairobi CBD' : 'Outside CBD'}</span>
+                            <span className="font-medium">{order.deliveryZone}</span>
                           </div>
                           {order.deliveryAddress && (
                             <div className="flex flex-col gap-1">

@@ -27,8 +27,6 @@ export default function Cart() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [view, setView] = useState<'cart' | 'checkout'>('cart');
-  const [deliveryLocations, setDeliveryLocations] = useState<DeliveryLocation[]>([]);
-  const [deliveryZoneId, setDeliveryZoneId] = useState<string>('');
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -75,23 +73,8 @@ export default function Cart() {
     setShowSuggestions(false);
   };
 
-  useEffect(() => {
-    let unsubscribe: () => void;
-    getDeliveryLocations().then(() => {
-      unsubscribe = onSnapshot(collection(db, 'delivery_locations'), (snapshot) => {
-        setDeliveryLocations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeliveryLocation)));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.GET, 'delivery_locations');
-      });
-    });
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-  const selectedLocation = deliveryLocations.find(l => l.id === deliveryZoneId);
-  const deliveryFee = selectedLocation ? selectedLocation.fee : 0;
-  const deliveryZoneName = selectedLocation ? selectedLocation.name : '';
+  const deliveryFee = 0;
+  const deliveryZoneName = "Standard Delivery";
   const finalTotal = total + deliveryFee;
 
   const handleProceedToCheckout = () => {
@@ -99,8 +82,8 @@ export default function Cart() {
   };
 
   const handleConfirmOrder = async () => {
-    if (!customerName || !customerPhone || !deliveryZoneId || !customerEmail) {
-      alert('Please fill in all delivery details (Name, Email, Phone, and Zone)');
+    if (!customerName || !customerPhone || !customerEmail) {
+      alert('Please fill in all delivery details (Name, Email, and Phone)');
       return;
     }
     if (!deliveryAddress) {
@@ -152,7 +135,6 @@ export default function Cart() {
     setShowReceipt(false);
     setView('cart');
     setPaymentMethod('');
-    setDeliveryZoneId('');
     setCustomerName('');
     setCustomerPhone('');
     setConfirmedOrder(null);
@@ -468,35 +450,6 @@ export default function Cart() {
                       </div>
                     )}
                   </div>
-
-                  <div className="space-y-4 pt-4">
-                    <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 ml-1">Select Delivery Zone</label>
-                    {deliveryLocations.length === 0 ? (
-                      <div className="p-6 bg-gray-50 rounded-3xl text-gray-400 text-[10px] uppercase tracking-widest font-bold text-center border border-dashed border-gray-200">
-                        No delivery zones configured.
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-4">
-                        {deliveryLocations.map(loc => (
-                          <button 
-                            key={loc.id}
-                            onClick={() => setDeliveryZoneId(loc.id)} 
-                            className={`p-6 border rounded-3xl text-left transition-all duration-500 relative overflow-hidden group ${deliveryZoneId === loc.id ? 'border-[#110A08] bg-[#110A08] text-white shadow-xl' : 'border-[#110A08]/10 bg-white hover:border-[#110A08]/30'}`}
-                          >
-                            <div className="flex justify-between items-center relative z-10">
-                              <div>
-                                <div className={`font-serif text-lg ${deliveryZoneId === loc.id ? 'text-white' : 'text-[#110A08]'}`}>{loc.name}</div>
-                                <div className={`text-[10px] uppercase tracking-widest font-bold mt-1 ${deliveryZoneId === loc.id ? 'text-[#D4AF37]' : 'text-gray-400'}`}>
-                                  {loc.fee === 0 ? 'Complimentary Delivery' : formatPrice(loc.fee)}
-                                </div>
-                              </div>
-                              {deliveryZoneId === loc.id && <CheckCircle2 size={20} className="text-[#D4AF37]" />}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
 
@@ -536,7 +489,7 @@ export default function Cart() {
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400">Delivery Fee</span>
                     <span className="font-serif font-bold text-[#110A08]">
-                      {deliveryZoneId ? (deliveryFee === 0 ? 'Free' : formatPrice(deliveryFee)) : '-'}
+                      Free
                     </span>
                   </div>
                   <div className="pt-6 border-t border-[#110A08]/5 flex justify-between items-center">
@@ -550,7 +503,7 @@ export default function Cart() {
             <div className="border-t border-[#110A08]/5 p-8 bg-[#FDFBF7]">
               <button 
                 onClick={handleConfirmOrder}
-                disabled={!deliveryZoneId || isProcessingPayment}
+                disabled={isProcessingPayment}
                 className="w-full bg-[#110A08] text-white py-5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.2em] hover:bg-[#D4AF37] transition-all duration-500 flex items-center justify-center gap-3 group disabled:opacity-30 disabled:cursor-not-allowed shadow-xl"
               >
                 Place Order via WhatsApp
