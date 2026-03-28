@@ -82,7 +82,7 @@ export default function Storefront() {
     { id: 'all', name: 'All Products' },
     { id: 'face', name: 'Face' },
     { id: 'body', name: 'Body' },
-    { id: 'oils', name: 'Treatment Oils' },
+    { id: 'oils', name: 'Oils' },
     { id: 'combos', name: 'Combos' },
     { id: 'wigs', name: 'Wigs' }
   ];

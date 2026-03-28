@@ -923,7 +923,7 @@ export default function Admin() {
                     >
                       <option value="face">Face Care</option>
                       <option value="body">Body Care</option>
-                      <option value="oils">Treatment Oils</option>
+                      <option value="oils">Oils</option>
                       <option value="combos">Combos</option>
                       <option value="wigs">Wigs</option>
                     </select>
