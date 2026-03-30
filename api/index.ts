@@ -8,13 +8,15 @@ app.use(express.json());
 
 // API Routes
 app.get("/api/health", (req, res) => {
-  console.log("Health check - Env keys:", Object.keys(process.env).filter(k => k.includes('EMAIL')));
+  const allKeys = Object.keys(process.env);
+  console.log("Health check - All env keys:", allKeys);
   res.json({ 
     status: "ok", 
     env: process.env.NODE_ENV, 
     emailConfigured: !!(process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD),
     emailUser: process.env.EMAIL_USER || "opulenceslik7@gmail.com",
-    availableKeys: Object.keys(process.env).filter(k => k.includes('EMAIL'))
+    availableKeys: allKeys.filter(k => k.includes('EMAIL')),
+    allKeysCount: allKeys.length
   });
 });
 

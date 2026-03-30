@@ -229,7 +229,8 @@ export default function Admin() {
       if (response.ok) {
         setEmailTestResult({ success: true, message: 'Test email sent successfully! Check your inbox.' });
       } else {
-        setEmailTestResult({ success: false, message: `Failed: ${data.error}. ${data.details || ''}` });
+        const debugInfo = data.debug ? ` (Debug: ${JSON.stringify(data.debug)})` : '';
+        setEmailTestResult({ success: false, message: `Failed: ${data.error}.${debugInfo} ${data.details || ''}` });
       }
     } catch (error) {
       setEmailTestResult({ success: false, message: `Error: ${error instanceof Error ? error.message : String(error)}` });
