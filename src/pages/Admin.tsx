@@ -198,6 +198,43 @@ export default function Admin() {
 
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [emailTestResult, setEmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [sendingReceiptId, setSendingReceiptId] = useState<string | null>(null);
+
+  const handleSendManualReceipt = async (order: Order) => {
+    setSendingReceiptId(order.id);
+    try {
+      const response = await fetch('/api/send-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order,
+          customerEmail: order.customerEmail || '' // Assuming customerEmail might be in order or we need to prompt
+        })
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        alert('Receipt sent successfully!');
+      } else {
+        alert(`Failed to send receipt: ${data.error}`);
+      }
+    } catch (error) {
+      alert(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setSendingReceiptId(null);
+    }
+  };
+
+  const handleCopyOrderSummary = (order: Order) => {
+    const items = order.items.map(i => `${i.quantity}x ${i.name} (${formatPrice(i.price * i.quantity)})`).join('\n');
+    const summary = `Order: ${order.orderNumber}\nCustomer: ${order.customerName}\nPhone: ${order.customerPhone}\nAddress: ${order.deliveryZone} - ${order.deliveryAddress}\n\nItems:\n${items}\n\nTotal: ${formatPrice(order.finalTotal)}`;
+    
+    navigator.clipboard.writeText(summary).then(() => {
+      alert('Order summary copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+    });
+  };
 
   const handleTestEmail = async () => {
     setIsTestingEmail(true);
@@ -1652,6 +1689,27 @@ export default function Admin() {
                             <span>Total</span>
                             <span>{formatPrice(order.finalTotal)}</span>
                           </div>
+                        </div>
+
+                        <div className="mt-6 flex gap-3">
+                          <button 
+                            onClick={() => handleCopyOrderSummary(order)}
+                            className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                          >
+                            <FileText size={14} /> Copy Summary
+                          </button>
+                          <button 
+                            onClick={() => handleSendManualReceipt(order)}
+                            disabled={sendingReceiptId === order.id}
+                            className="flex-1 py-3 bg-[#D4AF37] text-[#110A08] rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-[#c4a132] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {sendingReceiptId === order.id ? (
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#110A08]"></div>
+                            ) : (
+                              <Send size={14} />
+                            )}
+                            Send Receipt
+                          </button>
                         </div>
                       </div>
                     </div>

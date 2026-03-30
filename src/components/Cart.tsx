@@ -105,6 +105,7 @@ export default function Cart() {
         finalTotal,
         customerName,
         customerPhone,
+        customerEmail,
         deliveryZone: deliveryZoneName,
         deliveryAddress,
         paymentMethod: 'delivery',

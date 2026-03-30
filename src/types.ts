@@ -32,6 +32,7 @@ export interface Order {
   finalTotal: number;
   customerName: string;
   customerPhone: string;
+  customerEmail?: string;
   deliveryZone: string;
   deliveryAddress?: string;
   paymentMethod: 'delivery';

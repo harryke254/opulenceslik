@@ -15,8 +15,9 @@ app.get("/api/health", (req, res) => {
     env: process.env.NODE_ENV, 
     emailConfigured: !!(process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD),
     emailUser: process.env.EMAIL_USER || "opulenceslik7@gmail.com",
-    availableKeys: allKeys.filter(k => k.includes('EMAIL')),
-    allKeysCount: allKeys.length
+    availableKeys: allKeys.filter(k => k.toLowerCase().includes('email')),
+    allKeysCount: allKeys.length,
+    sampleKeys: allKeys.slice(0, 10) // Show first 10 keys to see naming convention
   });
 });
 
@@ -46,7 +47,9 @@ app.post("/api/send-receipt", async (req, res) => {
         hasUser: !!process.env.EMAIL_USER,
         hasPass: !!process.env.EMAIL_PASS,
         hasPassword: !!process.env.EMAIL_PASSWORD,
-        keys: Object.keys(process.env).filter(k => k.includes('EMAIL'))
+        keys: Object.keys(process.env).filter(k => k.toLowerCase().includes('email')),
+        allKeysCount: Object.keys(process.env).length,
+        sampleKeys: Object.keys(process.env).slice(0, 10)
       }
     });
   }
