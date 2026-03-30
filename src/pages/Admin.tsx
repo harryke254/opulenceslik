@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, Order, OrderStatus, Review } from '../types';
 import { getProducts, saveProduct, deleteProduct as deleteProductFromDb, formatPrice, getOrders, updateOrderStatus as updateOrderStatusInDb, deleteOrder as deleteOrderFromDb, handleFirestoreError, OperationType } from '../lib/storage';
-import { Trash2, Plus, ArrowLeft, Edit2, LogIn, Lock, Package, Image as ImageIcon, Save, X, Settings, Upload, FileText, Box, Clock, Truck, CheckCircle2, XCircle, LogOut, Download, ShoppingBag, Star, MessageSquare, Sparkles } from 'lucide-react';
+import { Trash2, Plus, ArrowLeft, Edit2, LogIn, Lock, Package, Image as ImageIcon, Save, X, Settings, Upload, FileText, Box, Clock, Truck, CheckCircle2, XCircle, LogOut, Download, ShoppingBag, Star, MessageSquare, Sparkles, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useStoreSettings } from '../hooks/useStoreSettings';
@@ -194,6 +194,48 @@ export default function Admin() {
     }
     // Reset input value to allow selecting the same file again
     e.target.value = '';
+  };
+
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [emailTestResult, setEmailTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleTestEmail = async () => {
+    setIsTestingEmail(true);
+    setEmailTestResult(null);
+    try {
+      const response = await fetch('/api/send-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order: {
+            orderNumber: 'TEST-123456',
+            date: new Date().toISOString(),
+            items: [{ name: 'Test Product', quantity: 1, price: 1000 }],
+            total: 1000,
+            deliveryFee: 0,
+            finalTotal: 1000,
+            customerName: 'Test User',
+            customerPhone: '0700000000',
+            deliveryZone: 'Test Zone',
+            deliveryAddress: 'Test Address',
+            paymentMethod: 'delivery',
+            status: 'pending'
+          },
+          customerEmail: email || 'devel0perharryke@gmail.com'
+        })
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        setEmailTestResult({ success: true, message: 'Test email sent successfully! Check your inbox.' });
+      } else {
+        setEmailTestResult({ success: false, message: `Failed: ${data.error}. ${data.details || ''}` });
+      }
+    } catch (error) {
+      setEmailTestResult({ success: false, message: `Error: ${error instanceof Error ? error.message : String(error)}` });
+    } finally {
+      setIsTestingEmail(false);
+    }
   };
 
   useEffect(() => {
@@ -1443,6 +1485,50 @@ export default function Admin() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Email Configuration Settings */}
+            <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-12 h-12 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
+                  <MessageSquare size={24} />
+                </div>
+                <h2 className="text-xl font-serif font-bold">Email Configuration</h2>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                  <p className="text-xs text-gray-500 mb-4 font-light leading-relaxed">
+                    To send email receipts, you must set the <code className="bg-gray-200 px-1 rounded">EMAIL_PASS</code> secret in AI Studio with your Gmail App Password.
+                  </p>
+                  <button 
+                    onClick={handleTestEmail}
+                    disabled={isTestingEmail}
+                    className="w-full py-4 bg-[#110A08] text-white rounded-xl hover:bg-gray-800 transition-all text-[10px] uppercase tracking-widest font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isTestingEmail ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        Send Test Receipt
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                {emailTestResult && (
+                  <div className={`p-4 rounded-xl text-xs font-medium ${emailTestResult.success ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+                    <div className="flex gap-2">
+                      {emailTestResult.success ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                      <p>{emailTestResult.message}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -158,11 +158,11 @@ service cloud.firestore {
 
     function isValidReview() {
       let data = request.resource.data;
-      let requiredFields = ['id', 'productId', 'customerName', 'rating', 'comment', 'date'];
+      let requiredFields = ['productId', 'customerName', 'rating', 'comment', 'date'];
       let allowedFields = ['id', 'productId', 'customerName', 'rating', 'comment', 'date', 'approved'];
       return hasRequiredFields(requiredFields) &&
              hasOnlyAllowedFields(allowedFields) &&
-             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             (!('id' in data) || (data.id is string && data.id.size() > 0 && data.id.size() < 100)) &&
              data.productId is string && data.productId.size() > 0 && data.productId.size() < 100 &&
              data.customerName is string && data.customerName.size() > 0 && data.customerName.size() < 100 &&
              data.rating is number && data.rating >= 1 && data.rating <= 5 &&

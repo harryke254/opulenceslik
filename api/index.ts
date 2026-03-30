@@ -8,7 +8,12 @@ app.use(express.json());
 
 // API Routes
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", env: process.env.NODE_ENV, vercel: !!process.env.VERCEL });
+  res.json({ 
+    status: "ok", 
+    env: process.env.NODE_ENV, 
+    emailConfigured: !!(process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD),
+    emailUser: process.env.EMAIL_USER || "opulenceslik7@gmail.com"
+  });
 });
 
 app.post("/api/send-receipt", async (req, res) => {
@@ -21,10 +26,10 @@ app.post("/api/send-receipt", async (req, res) => {
   }
 
   const emailUser = (process.env.EMAIL_USER || "opulenceslik7@gmail.com").trim();
-  const emailPass = process.env.EMAIL_PASS?.trim();
+  const emailPass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD)?.trim();
 
   if (!emailPass) {
-    console.error("EMAIL_PASS environment variable is NOT set");
+    console.error("EMAIL_PASS or EMAIL_PASSWORD environment variable is NOT set");
     return res.status(500).json({ error: "Email service not configured (missing password)" });
   }
 
@@ -103,11 +108,17 @@ app.post("/api/send-receipt", async (req, res) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    res.json({ success: true });
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully:", info.messageId);
+    res.json({ success: true, messageId: info.messageId });
   } catch (error) {
     console.error("Error sending email:", error);
-    res.status(500).json({ error: "Failed to send email" });
+    res.status(500).json({ 
+      error: "Failed to send email", 
+      details: error instanceof Error ? error.message : String(error),
+      code: (error as any).code,
+      command: (error as any).command
+    });
   }
 });
 
