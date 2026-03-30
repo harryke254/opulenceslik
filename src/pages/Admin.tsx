@@ -426,7 +426,7 @@ export default function Admin() {
     try {
       await updateDoc(doc(db, 'reviews', id), { approved });
     } catch (error) {
-      console.error('Error updating review:', error);
+      handleFirestoreError(error, OperationType.UPDATE, `reviews/${id}`);
     }
   };
 
@@ -435,7 +435,7 @@ export default function Admin() {
       try {
         await deleteDoc(doc(db, 'reviews', id));
       } catch (error) {
-        console.error('Error deleting review:', error);
+        handleFirestoreError(error, OperationType.DELETE, `reviews/${id}`);
       }
     }
   };

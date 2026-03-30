@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, Star, CheckCircle2, MessageCircle, Send, User, Package } from 'lucide-react';
 import { Product, Review } from '../types';
-import { formatPrice } from '../lib/storage';
+import { formatPrice, handleFirestoreError, OperationType } from '../lib/storage';
 import { useCart } from '../context/CartContext';
 import { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, addDoc, orderBy, doc, getDoc } from 'firebase/firestore';
 
 interface ProductQuickViewProps {
@@ -107,8 +107,7 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
         setShowReviewForm(false);
       }, 3000);
     } catch (error) {
-      console.error('Error submitting review:', error);
-      alert(`Failed to submit review: ${error instanceof Error ? error.message : String(error)}`);
+      handleFirestoreError(error, OperationType.CREATE, 'reviews');
     } finally {
       setIsSubmitting(false);
     }

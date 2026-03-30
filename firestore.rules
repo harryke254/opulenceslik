@@ -212,7 +212,7 @@ service cloud.firestore {
 
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if isValidReview() && (!('approved' in request.resource.data) || request.resource.data.approved == false || isAdmin());
+      allow create: if isValidReview() && (request.resource.data.get('approved', false) == false || isAdmin());
       allow update: if isAdmin() && isValidReview();
       allow delete: if isAdmin();
     }
