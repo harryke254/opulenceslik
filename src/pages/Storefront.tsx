@@ -10,7 +10,7 @@ import AIAssistant from '../components/AIAssistant';
 import ProductQuickView from '../components/ProductQuickView';
 import { useStoreSettings } from '../hooks/useStoreSettings';
 import { db } from '../firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
 
 const COLORS = {
   dark: '#110A08',
@@ -31,6 +31,25 @@ export default function Storefront() {
   const { items, setIsCartOpen, addToCart } = useCart();
   const { logoUrl, categoryImages, heroSlides, heroContent } = useStoreSettings();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [realReviews, setRealReviews] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch approved reviews for the homepage
+    const q = query(
+      collection(db, 'reviews'),
+      where('approved', '==', true),
+      orderBy('date', 'desc')
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const reviewsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRealReviews(reviewsData.slice(0, 6)); // Show latest 6 reviews
+    }, (error) => {
+      console.error("Error fetching reviews:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (heroSlides.length <= 1) return;
@@ -581,34 +600,61 @@ export default function Storefront() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-12">
-            {[
-              { text: "My skin has never looked better! The Glow Up Body Cream is a game changer.", author: "Sarah K.", role: "Verified Glower" },
-              { text: "The best products I've ever used. The luxury feel is unmatched.", author: "Jessica M.", role: "Loyal Customer" },
-              { text: "Luxurious and effective. I'm in love with the Therapy Oil!", author: "Emily R.", role: "Beauty Blogger" }
-            ].map((review, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1, duration: 1 }}
-                className="bg-white/5 backdrop-blur-sm p-10 rounded-[2.5rem] border border-white/10 relative group hover:bg-white/10 transition-all duration-500"
-              >
-                <div className="flex gap-1 mb-8 text-[#D4AF37]">
-                  {[...Array(5)].map((_, j) => <Star key={j} size={14} fill="currentColor" />)}
-                </div>
-                <p className="font-serif text-xl md:text-2xl mb-10 text-white leading-relaxed italic">"{review.text}"</p>
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] font-bold text-xs">
-                    {review.author[0]}
+            {realReviews.length > 0 ? (
+              realReviews.map((review, i) => (
+                <motion.div 
+                  key={review.id}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 1 }}
+                  className="bg-white/5 backdrop-blur-sm p-10 rounded-[2.5rem] border border-white/10 relative group hover:bg-white/10 transition-all duration-500"
+                >
+                  <div className="flex gap-1 mb-8 text-[#D4AF37]">
+                    {[...Array(5)].map((_, j) => <Star key={j} size={14} fill={j < review.rating ? "currentColor" : "none"} />)}
                   </div>
-                  <div>
-                    <div className="text-sm font-bold text-white tracking-widest uppercase">{review.author}</div>
-                    <div className="text-[10px] text-[#D4AF37] uppercase tracking-widest font-bold mt-1">{review.role}</div>
+                  <p className="font-serif text-xl md:text-2xl mb-10 text-white leading-relaxed italic line-clamp-4">"{review.comment}"</p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] font-bold text-xs">
+                      {review.customerName[0]}
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white tracking-widest uppercase">{review.customerName}</div>
+                      <div className="text-[10px] text-[#D4AF37] uppercase tracking-widest font-bold mt-1">Verified Glower</div>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))
+            ) : (
+              [
+                { text: "My skin has never looked better! The Glow Up Body Cream is a game changer.", author: "Sarah K.", role: "Verified Glower" },
+                { text: "The best products I've ever used. The luxury feel is unmatched.", author: "Jessica M.", role: "Loyal Customer" },
+                { text: "Luxurious and effective. I'm in love with the Therapy Oil!", author: "Emily R.", role: "Beauty Blogger" }
+              ].map((review, i) => (
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 1 }}
+                  className="bg-white/5 backdrop-blur-sm p-10 rounded-[2.5rem] border border-white/10 relative group hover:bg-white/10 transition-all duration-500"
+                >
+                  <div className="flex gap-1 mb-8 text-[#D4AF37]">
+                    {[...Array(5)].map((_, j) => <Star key={j} size={14} fill="currentColor" />)}
+                  </div>
+                  <p className="font-serif text-xl md:text-2xl mb-10 text-white leading-relaxed italic">"{review.text}"</p>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] font-bold text-xs">
+                      {review.author[0]}
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white tracking-widest uppercase">{review.author}</div>
+                      <div className="text-[10px] text-[#D4AF37] uppercase tracking-widest font-bold mt-1">{review.role}</div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
       </section>

@@ -677,6 +677,11 @@ export default function Admin() {
             >
               <Star size={16} />
               Reviews
+              {reviews.filter(r => !r.approved).length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 bg-orange-500 text-white text-[8px] rounded-full">
+                  {reviews.filter(r => !r.approved).length}
+                </span>
+              )}
               {activeTab === 'reviews' && (
                 <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D4AF37] rounded-t-full" />
               )}
@@ -752,8 +757,15 @@ export default function Admin() {
                 </div>
                 <h3 className="text-lg font-serif font-bold mb-2">Reviews</h3>
                 <p className="text-xs text-gray-500 font-light leading-relaxed">Moderate customer feedback and approve product reviews.</p>
-                <div className="mt-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#D4AF37]">
-                  Moderate <ArrowLeft size={12} className="rotate-180" />
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#D4AF37]">
+                    Moderate <ArrowLeft size={12} className="rotate-180" />
+                  </div>
+                  {reviews.filter(r => !r.approved).length > 0 && (
+                    <span className="px-2 py-1 bg-orange-100 text-orange-600 text-[8px] font-bold uppercase tracking-widest rounded-full">
+                      {reviews.filter(r => !r.approved).length} Pending
+                    </span>
+                  )}
                 </div>
               </button>
 

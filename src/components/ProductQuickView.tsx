@@ -108,6 +108,7 @@ export default function ProductQuickView({ product, onClose }: ProductQuickViewP
       }, 3000);
     } catch (error) {
       console.error('Error submitting review:', error);
+      alert(`Failed to submit review: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsSubmitting(false);
     }

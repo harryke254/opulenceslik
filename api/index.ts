@@ -31,12 +31,13 @@ app.post("/api/send-receipt", async (req, res) => {
   }
 
   const emailUser = (process.env.EMAIL_USER || "opulenceslik7@gmail.com").trim();
-  const emailPass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD)?.trim();
+  const emailPass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || "pvkp mmvk vluh jmgk")?.trim();
 
   console.log("Attempting to send email...");
   console.log("EMAIL_USER present:", !!process.env.EMAIL_USER);
   console.log("EMAIL_PASS present:", !!process.env.EMAIL_PASS);
   console.log("EMAIL_PASSWORD present:", !!process.env.EMAIL_PASSWORD);
+  console.log("Using fallback password:", !process.env.EMAIL_PASS && !process.env.EMAIL_PASSWORD);
 
   if (!emailPass) {
     console.error("EMAIL_PASS or EMAIL_PASSWORD environment variable is NOT set");
