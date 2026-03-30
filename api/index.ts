@@ -8,11 +8,13 @@ app.use(express.json());
 
 // API Routes
 app.get("/api/health", (req, res) => {
+  console.log("Health check - Env keys:", Object.keys(process.env).filter(k => k.includes('EMAIL')));
   res.json({ 
     status: "ok", 
     env: process.env.NODE_ENV, 
     emailConfigured: !!(process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD),
-    emailUser: process.env.EMAIL_USER || "opulenceslik7@gmail.com"
+    emailUser: process.env.EMAIL_USER || "opulenceslik7@gmail.com",
+    availableKeys: Object.keys(process.env).filter(k => k.includes('EMAIL'))
   });
 });
 
@@ -28,9 +30,23 @@ app.post("/api/send-receipt", async (req, res) => {
   const emailUser = (process.env.EMAIL_USER || "opulenceslik7@gmail.com").trim();
   const emailPass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD)?.trim();
 
+  console.log("Attempting to send email...");
+  console.log("EMAIL_USER present:", !!process.env.EMAIL_USER);
+  console.log("EMAIL_PASS present:", !!process.env.EMAIL_PASS);
+  console.log("EMAIL_PASSWORD present:", !!process.env.EMAIL_PASSWORD);
+
   if (!emailPass) {
     console.error("EMAIL_PASS or EMAIL_PASSWORD environment variable is NOT set");
-    return res.status(500).json({ error: "Email service not configured (missing password)" });
+    console.log("Current env keys:", Object.keys(process.env).filter(k => k.includes('EMAIL')));
+    return res.status(500).json({ 
+      error: "Email service not configured (missing password)",
+      debug: {
+        hasUser: !!process.env.EMAIL_USER,
+        hasPass: !!process.env.EMAIL_PASS,
+        hasPassword: !!process.env.EMAIL_PASSWORD,
+        keys: Object.keys(process.env).filter(k => k.includes('EMAIL'))
+      }
+    });
   }
 
   console.log(`Using email user: ${emailUser}`);
