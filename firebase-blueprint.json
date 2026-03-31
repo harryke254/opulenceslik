@@ -23,16 +23,21 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "date": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "total": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "finalTotal": { "type": "number" },
         "customerName": { "type": "string" },
         "customerPhone": { "type": "string" },
         "customerEmail": { "type": "string" },
-        "deliveryLocation": { "type": "string" },
-        "items": { "type": "array", "items": { "type": "object" } },
-        "total": { "type": "number" },
-        "status": { "type": "string" },
-        "date": { "type": "string" }
+        "deliveryZone": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string" }
       },
-      "required": ["id", "customerName", "customerPhone", "deliveryLocation", "items", "total", "status", "date"]
+      "required": ["id", "orderNumber", "date", "items", "total", "deliveryFee", "finalTotal", "customerName", "customerPhone", "deliveryZone", "paymentMethod", "status"]
     },
     "DeliveryLocation": {
       "title": "DeliveryLocation",

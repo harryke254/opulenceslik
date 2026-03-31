@@ -21,14 +21,19 @@ service cloud.firestore {
     // Document ID: {orderId}
     // Fields:
     //   - id: string (required)
+    //   - orderNumber: string (required)
+    //   - date: string (required)
+    //   - items: list (required)
+    //   - total: number (required)
+    //   - deliveryFee: number (required)
+    //   - finalTotal: number (required)
     //   - customerName: string (required)
     //   - customerPhone: string (required)
     //   - customerEmail: string (optional)
-    //   - deliveryLocation: string (required)
-    //   - items: list (required)
-    //   - total: number (required)
+    //   - deliveryZone: string (required)
+    //   - deliveryAddress: string (optional)
+    //   - paymentMethod: string (required)
     //   - status: string (required)
-    //   - date: string (required)
     //
     // Collection: delivery_locations
     // Document ID: {locationId}
@@ -117,22 +122,24 @@ service cloud.firestore {
     function isValidOrder() {
       let data = request.resource.data;
       let requiredFields = ['id', 'orderNumber', 'date', 'items', 'total', 'deliveryFee', 'finalTotal', 'customerName', 'customerPhone', 'deliveryZone', 'paymentMethod', 'status'];
-      let allowedFields = ['id', 'orderNumber', 'date', 'items', 'total', 'deliveryFee', 'finalTotal', 'customerName', 'customerPhone', 'deliveryZone', 'deliveryAddress', 'paymentMethod', 'status'];
+      let allowedFields = ['id', 'orderNumber', 'date', 'items', 'total', 'deliveryFee', 'finalTotal', 'customerName', 'customerPhone', 'customerEmail', 'deliveryZone', 'deliveryAddress', 'paymentMethod', 'status', 'orderTrackingId'];
       return hasRequiredFields(requiredFields) &&
              hasOnlyAllowedFields(allowedFields) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
              data.orderNumber is string && data.orderNumber.size() > 0 && data.orderNumber.size() < 50 &&
-             data.date is string && data.date.size() < 50 &&
+             data.date is string && data.date.size() < 100 &&
              data.items is list && data.items.size() > 0 && data.items.size() < 100 &&
              data.total is number && data.total >= 0 &&
              data.deliveryFee is number && data.deliveryFee >= 0 &&
              data.finalTotal is number && data.finalTotal >= 0 &&
-             data.customerName is string && data.customerName.size() > 0 && data.customerName.size() < 100 &&
-             data.customerPhone is string && data.customerPhone.size() > 0 && data.customerPhone.size() < 50 &&
-             data.deliveryZone is string && data.deliveryZone.size() > 0 && data.deliveryZone.size() < 100 &&
-             (!('deliveryAddress' in data) || (data.deliveryAddress is string && data.deliveryAddress.size() < 500)) &&
+             data.customerName is string && data.customerName.size() > 0 && data.customerName.size() < 200 &&
+             data.customerPhone is string && data.customerPhone.size() > 0 && data.customerPhone.size() < 100 &&
+             (!('customerEmail' in data) || (data.customerEmail is string && data.customerEmail.size() < 200)) &&
+             data.deliveryZone is string && data.deliveryZone.size() > 0 && data.deliveryZone.size() < 200 &&
+             (!('deliveryAddress' in data) || (data.deliveryAddress is string && data.deliveryAddress.size() < 1000)) &&
+             (!('orderTrackingId' in data) || (data.orderTrackingId is string && data.orderTrackingId.size() < 100)) &&
              data.paymentMethod is string && data.paymentMethod in ['delivery', 'mpesa'] &&
-             data.status is string && data.status in ['pending', 'processing', 'dispatched', 'delivered', 'cancelled'];
+             data.status is string && data.status in ['pending', 'processing', 'dispatched', 'delivered', 'cancelled', 'paid', 'pending_payment'];
     }
 
     function isValidDeliveryLocation() {
@@ -164,10 +171,10 @@ service cloud.firestore {
              hasOnlyAllowedFields(allowedFields) &&
              (!('id' in data) || (data.id is string && data.id.size() > 0 && data.id.size() < 100)) &&
              data.productId is string && data.productId.size() > 0 && data.productId.size() < 100 &&
-             data.customerName is string && data.customerName.size() > 0 && data.customerName.size() < 100 &&
+             data.customerName is string && data.customerName.size() > 0 && data.customerName.size() < 200 &&
              data.rating is number && data.rating >= 1 && data.rating <= 5 &&
-             data.comment is string && data.comment.size() > 0 && data.comment.size() < 1000 &&
-             data.date is string && data.date.size() < 50 &&
+             data.comment is string && data.comment.size() > 0 && data.comment.size() < 2000 &&
+             data.date is string && data.date.size() < 100 &&
              (!('approved' in data) || data.approved is bool);
     }
 
