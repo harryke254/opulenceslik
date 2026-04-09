@@ -90,56 +90,50 @@ export default function Cart() {
       alert('Please provide a detailed delivery address');
       return;
     }
-    if (!paymentMethod) {
-      setPaymentMethod('delivery');
-    }
+    
+    setIsProcessingPayment(true);
 
-    const processOrderSuccess = async (orderNum: string, status: 'pending' | 'paid' = 'pending') => {
-      const newOrder: Order = {
-        id: orderNum,
-        orderNumber: orderNum,
-        date: new Date().toISOString(),
-        items: [...items],
-        total,
-        deliveryFee,
-        finalTotal,
-        customerName,
-        customerPhone,
-        customerEmail,
-        deliveryZone: deliveryZoneName,
-        deliveryAddress,
-        paymentMethod: 'delivery',
-        status: status
-      };
+    const orderNum = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newOrder: Order = {
+      id: orderNum,
+      orderNumber: orderNum,
+      date: new Date().toISOString(),
+      items: [...items],
+      total,
+      deliveryFee,
+      finalTotal,
+      customerName,
+      customerPhone,
+      customerEmail,
+      deliveryZone: deliveryZoneName,
+      deliveryAddress,
+      paymentMethod: 'delivery',
+      status: 'pending'
+    };
+
+    try {
+      // 1. Save to Firestore (Fast)
       await saveOrder(newOrder);
       
-      // Send email receipt
-      try {
-        const emailResponse = await fetch('/api/send-receipt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order: newOrder, customerEmail })
-        });
-        
-        if (!emailResponse.ok) {
-          const errorData = await emailResponse.json();
-          console.error('Email receipt failed:', errorData);
-          // We don't alert the user here to avoid interrupting the success flow, 
-          // but we log it for debugging.
-        } else {
-          console.log('Email receipt sent successfully');
-        }
-      } catch (error) {
-        console.error('Failed to send email receipt (network error):', error);
-      }
-
+      // 2. Clear cart and show success UI IMMEDIATELY after save
       setConfirmedOrder(newOrder);
       setOrderNumber(orderNum);
       setShowReceipt(true);
       clearCart();
-    };
+      setIsProcessingPayment(false);
 
-    processOrderSuccess(`ORD-${Math.floor(100000 + Math.random() * 900000)}`);
+      // 3. Send email receipt in the background (Slow, don't await)
+      fetch('/api/send-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newOrder, customerEmail })
+      }).catch(error => console.error('Background email receipt failed:', error));
+
+    } catch (error) {
+      console.error('Order placement failed:', error);
+      alert('Something went wrong while placing your order. Please try again.');
+      setIsProcessingPayment(false);
+    }
   };
 
   const handleWhatsAppSend = () => {
@@ -495,6 +489,18 @@ export default function Cart() {
                     </div>
                   </div>
                 </div>
+
+                <div className="flex items-center justify-center gap-4 py-4 opacity-50">
+                  <div className="flex items-center gap-2 text-[9px] uppercase tracking-widest font-bold text-[#110A08]">
+                    <CreditCard size={12} className="text-[#D4AF37]" />
+                    Secure Checkout
+                  </div>
+                  <div className="w-px h-4 bg-[#110A08]/10"></div>
+                  <div className="flex items-center gap-2 text-[9px] uppercase tracking-widest font-bold text-[#110A08]">
+                    <Truck size={12} className="text-[#D4AF37]" />
+                    Fast Delivery
+                  </div>
+                </div>
               </div>
 
               {/* Order Summary Card */}
@@ -527,10 +533,19 @@ export default function Cart() {
               <button 
                 onClick={handleConfirmOrder}
                 disabled={isProcessingPayment}
-                className="w-full bg-[#110A08] text-white py-5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.2em] hover:bg-[#D4AF37] transition-all duration-500 flex items-center justify-center gap-3 group disabled:opacity-30 disabled:cursor-not-allowed shadow-xl"
+                className="w-full bg-[#110A08] text-white py-5 rounded-2xl font-bold text-[11px] uppercase tracking-[0.2em] hover:bg-[#D4AF37] transition-all duration-500 flex items-center justify-center gap-3 group disabled:opacity-70 disabled:cursor-not-allowed shadow-xl"
               >
-                Place Order via WhatsApp
-                <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform duration-500" />
+                {isProcessingPayment ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </div>
+                ) : (
+                  <>
+                    Place Order via WhatsApp
+                    <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform duration-500" />
+                  </>
+                )}
               </button>
             </div>
           </>
