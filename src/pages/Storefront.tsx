@@ -344,10 +344,7 @@ export default function Storefront() {
             </button>
           </div>
           <div className="flex overflow-x-auto pb-8 gap-8 no-scrollbar snap-x">
-            {[
-              ...categoryImages,
-              { id: 'all', label: 'All Glow', url: 'https://picsum.photos/seed/all/400/500' }
-            ].map((cat) => (
+            {categoryImages.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => {

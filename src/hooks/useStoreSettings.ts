@@ -54,7 +54,8 @@ const DEFAULT_CATEGORY_IMAGES: CategoryImage[] = [
   { id: 'body', label: 'Body Care', url: 'https://image2url.com/r2/default/images/1774387247714-3d94387b-425a-4c9b-b533-68730254dd3b.jpg' },
   { id: 'oils', label: 'Oils', url: 'https://image2url.com/r2/default/images/1774387214771-4d94387b-425a-4c9b-b533-68730254dd3b.jpg' },
   { id: 'combos', label: 'Value Combos', url: 'https://image2url.com/r2/default/images/1774387184771-5d94387b-425a-4c9b-b533-68730254dd3b.jpg' },
-  { id: 'wigs', label: 'Premium Wigs', url: 'https://picsum.photos/seed/wigs/400/500' }
+  { id: 'wigs', label: 'Premium Wigs', url: 'https://picsum.photos/seed/wigs/400/500' },
+  { id: 'all', label: 'All Glow', url: 'https://picsum.photos/seed/all/400/500' }
 ];
 
 export function useStoreSettings() {
@@ -114,7 +115,15 @@ export function useStoreSettings() {
         const data = docSnap.data();
         if (data.logoUrl) setLogoUrl(data.logoUrl);
         if (data.priceFilters) setPriceFilters(data.priceFilters);
-        if (data.categoryImages) setCategoryImages(data.categoryImages);
+        if (data.categoryImages) {
+          // Merge saved images with defaults to ensure any new categories are included
+          const savedImages = data.categoryImages as CategoryImage[];
+          const mergedImages = DEFAULT_CATEGORY_IMAGES.map(defaultCat => {
+            const savedCat = savedImages.find(s => s.id === defaultCat.id);
+            return savedCat || defaultCat;
+          });
+          setCategoryImages(mergedImages);
+        }
         if (data.heroSlides) setHeroSlides(data.heroSlides);
         if (data.heroContent) setHeroContent(data.heroContent);
       }
