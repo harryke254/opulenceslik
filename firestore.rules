@@ -122,7 +122,7 @@ service cloud.firestore {
     function isValidOrder() {
       let data = request.resource.data;
       let requiredFields = ['id', 'orderNumber', 'date', 'items', 'total', 'deliveryFee', 'finalTotal', 'customerName', 'customerPhone', 'deliveryZone', 'paymentMethod', 'status'];
-      let allowedFields = ['id', 'orderNumber', 'date', 'items', 'total', 'deliveryFee', 'finalTotal', 'customerName', 'customerPhone', 'customerEmail', 'deliveryZone', 'deliveryAddress', 'paymentMethod', 'status', 'orderTrackingId'];
+      let allowedFields = ['id', 'orderNumber', 'date', 'items', 'total', 'deliveryFee', 'finalTotal', 'customerName', 'customerPhone', 'customerEmail', 'deliveryZone', 'deliveryAddress', 'paymentMethod', 'status', 'orderTrackingId', 'tillNumber', 'mpesaTransactionId', 'paymentStatus', 'createdAt'];
       return hasRequiredFields(requiredFields) &&
              hasOnlyAllowedFields(allowedFields) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
@@ -138,7 +138,11 @@ service cloud.firestore {
              data.deliveryZone is string && data.deliveryZone.size() > 0 && data.deliveryZone.size() < 200 &&
              (!('deliveryAddress' in data) || (data.deliveryAddress is string && data.deliveryAddress.size() < 1000)) &&
              (!('orderTrackingId' in data) || (data.orderTrackingId is string && data.orderTrackingId.size() < 100)) &&
-             data.paymentMethod is string && data.paymentMethod in ['delivery', 'mpesa'] &&
+             (!('tillNumber' in data) || (data.tillNumber is string && data.tillNumber.size() < 50)) &&
+             (!('mpesaTransactionId' in data) || (data.mpesaTransactionId is string && data.mpesaTransactionId.size() < 100)) &&
+             (!('paymentStatus' in data) || (data.paymentStatus is string && data.paymentStatus.size() < 100)) &&
+             (!('createdAt' in data) || (data.createdAt is string || data.createdAt is number)) &&
+             data.paymentMethod is string && data.paymentMethod in ['delivery', 'mpesa', 'M-PESA Buy Goods and Services'] &&
              data.status is string && data.status in ['pending', 'processing', 'dispatched', 'delivered', 'cancelled', 'paid', 'pending_payment'];
     }
 
