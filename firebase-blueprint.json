@@ -34,10 +34,30 @@
         "customerEmail": { "type": "string" },
         "deliveryZone": { "type": "string" },
         "deliveryAddress": { "type": "string" },
-        "paymentMethod": { "type": "string" },
-        "status": { "type": "string" }
+        "paymentMethod": { 
+          "type": "string", 
+          "enum": ["delivery", "mpesa", "M-PESA Buy Goods and Services"] 
+        },
+        "status": { "type": "string" },
+        "tillNumber": { "type": "string" },
+        "mpesaTransactionId": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "createdAt": { "type": ["string", "number"] }
       },
-      "required": ["id", "orderNumber", "date", "items", "total", "deliveryFee", "finalTotal", "customerName", "customerPhone", "deliveryZone", "paymentMethod", "status"]
+      "required": [
+        "id", 
+        "orderNumber", 
+        "date", 
+        "items", 
+        "total", 
+        "deliveryFee", 
+        "finalTotal", 
+        "customerName", 
+        "customerPhone", 
+        "deliveryZone", 
+        "paymentMethod", 
+        "status"
+      ]
     },
     "DeliveryLocation": {
       "title": "DeliveryLocation",
