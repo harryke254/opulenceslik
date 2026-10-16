@@ -1,7 +1,30 @@
 import express from "express";
 import path from "path";
 import nodemailer from "nodemailer";
+import admin from "firebase-admin";
 import "dotenv/config";
+
+// Initialize Firebase Admin SDK for serverless/backend use
+if (!admin.apps.length) {
+  try {
+    // If you have a service account JSON file configured via environment variable:
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    } else {
+      // Fallback to default initialization (or environment variables)
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault()
+      });
+    }
+  } catch (error) {
+    console.error("Firebase admin initialization error:", error);
+  }
+}
+
+const db = admin.apps.length ? admin.firestore() : null;
 
 const app = express();
 app.use(express.json());
@@ -14,6 +37,8 @@ type OrderItem = {
   name: string;
   quantity: number;
   price: number;
+  imageUrl?: string;
+  category?: string;
 };
 
 type OrderInput = {
@@ -21,14 +46,11 @@ type OrderInput = {
   customerEmail: string;
   customerPhone?: string;
   deliveryAddress: string;
+  deliveryZone?: string;
   totalAmount: number;
   items: OrderItem[];
   mpesaTransactionId: string;
 };
-
-function normalizeMpesaTransactionId(value: string) {
-  return String(value || "").trim();
-}
 
 function validateOrderInput(payload: Partial<OrderInput>) {
   if (!payload.customerName || !payload.customerEmail || !payload.deliveryAddress) {
@@ -43,14 +65,9 @@ function validateOrderInput(payload: Partial<OrderInput>) {
     return "Total amount must be greater than zero.";
   }
 
-  const txId = normalizeMpesaTransactionId(payload.mpesaTransactionId || "");
+  const txId = String(payload.mpesaTransactionId || "").trim();
   if (!txId) {
     return "M-PESA transaction ID is required.";
-  }
-
-  // Optional format validation
-  if (!/^[A-Za-z0-9]+$/i.test(txId)) {
-    return "M-PESA transaction ID is invalid.";
   }
 
   return null;
@@ -83,7 +100,7 @@ function buildAdminOrderEmailHtml(order: any) {
         <p><strong>Name:</strong> ${order.customerName}</p>
         <p><strong>Email:</strong> ${order.customerEmail}</p>
         <p><strong>Phone:</strong> ${order.customerPhone || "N/A"}</p>
-        <p><strong>Delivery Address:</strong> ${order.deliveryAddress}</p>
+        <p><strong>Delivery Address:</strong> ${order.deliveryZone || ""} ${order.deliveryAddress}</p>
       </div>
 
       <table style="width: 100%; margin-top: 24px; border-collapse: collapse;">
@@ -110,7 +127,8 @@ async function sendAdminEmail(order: any) {
   const emailPass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || "").trim();
 
   if (!emailPass) {
-    throw new Error("Email service not configured");
+    console.warn("Email password not configured. Skipping admin notification email.");
+    return;
   }
 
   const transporter = nodemailer.createTransport({
@@ -130,17 +148,6 @@ async function sendAdminEmail(order: any) {
     to: ADMIN_EMAIL,
     subject: `New M-PESA Pending Order - ${order.orderNumber}`,
     html: buildAdminOrderEmailHtml(order),
-    text: `
-Order ID / Reference: ${order.orderNumber}
-Customer: ${order.customerName}
-Email: ${order.customerEmail}
-Phone: ${order.customerPhone || "N/A"}
-Delivery Address: ${order.deliveryAddress}
-Total Amount Paid: KES ${Number(order.totalAmount).toLocaleString()}
-M-PESA Transaction ID: ${order.mpesaTransactionId}
-Items:
-${order.items.map((item: any) => `- ${item.name} x ${item.quantity} = KES ${Number(item.price * item.quantity).toLocaleString()}`).join("\n")}
-    `,
   });
 }
 
@@ -149,7 +156,7 @@ app.get("/api/health", (req, res) => {
     status: "ok",
     env: process.env.NODE_ENV,
     emailConfigured: !!(process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD),
-    emailUser: process.env.EMAIL_USER || "opulenceslik7@gmail.com",
+    databaseConnected: !!db,
   });
 });
 
@@ -162,58 +169,53 @@ app.post("/api/checkout/manual-mpesa", async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
-    const orderNumber =
-      payload.customerEmail
-        ? `OS-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-        : `OS-${Date.now()}`;
+    const orderNumber = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    const order = {
+    const orderData = {
+      id: orderNumber,
       orderNumber,
       customerName: payload.customerName,
       customerEmail: payload.customerEmail,
       customerPhone: payload.customerPhone || "",
       deliveryAddress: payload.deliveryAddress,
-      totalAmount: Number(payload.totalAmount),
-      mpesaTransactionId: String(payload.mpesaTransactionId).trim(),
+      deliveryZone: payload.deliveryZone || "Standard Delivery",
+      total: payload.totalAmount,
+      finalTotal: payload.totalAmount,
+      totalAmount: payload.totalAmount,
       items: payload.items,
-      paymentStatus: "Pending Admin Verification",
-      orderStatus: "Processing",
+      mpesaTransactionId: String(payload.mpesaTransactionId).trim().toUpperCase(),
       paymentMethod: MPESA_PAYMENT_METHOD,
       tillNumber: MPESA_TILL_NUMBER,
+      paymentStatus: "Pending Admin Verification",
+      status: "pending",
+      date: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
 
-    // Save to your database here
-    // Example:
-    // await Order.create({
-    //   orderNumber: order.orderNumber,
-    //   customerName: order.customerName,
-    //   customerEmail: order.customerEmail,
-    //   customerPhone: order.customerPhone,
-    //   deliveryAddress: order.deliveryAddress,
-    //   totalAmount: order.totalAmount,
-    //   mpesaTransactionId: order.mpesaTransactionId,
-    //   items: order.items,
-    //   paymentStatus: "Pending Admin Verification",
-    //   orderStatus: "Processing"
-    // });
+    // 1. Save order to Firestore Database securely on the server
+    if (db) {
+      await db.collection("orders").doc(orderNumber).set(orderData);
+    } else {
+      console.warn("Firestore database not initialized. Order stored in memory/skipped DB write.");
+    }
 
-    await sendAdminEmail(order);
+    // 2. Send Email Notification to Admin
+    await sendAdminEmail(orderData);
 
     return res.status(201).json({
       success: true,
       message: "Order submitted successfully. Pending admin verification.",
       order: {
-        orderNumber: order.orderNumber,
-        paymentStatus: order.paymentStatus,
-        orderStatus: order.orderStatus,
+        orderNumber: orderData.orderNumber,
+        paymentStatus: orderData.paymentStatus,
+        orderStatus: orderData.status,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("checkout/manual-mpesa error:", error);
     return res.status(500).json({
       error: "Failed to process order",
-      details: error instanceof Error ? error.message : String(error),
+      details: error.message || String(error),
     });
   }
 });
@@ -225,7 +227,6 @@ app.post("/api/send-receipt", async (req, res) => {
     return res.status(400).json({ error: "Missing order or customer email" });
   }
 
-  // Keep it for customer email if you still use it, but the new requirement is admin notification
   try {
     const emailUser = (process.env.EMAIL_USER || "opulenceslik7@gmail.com").trim();
     const emailPass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || "").trim();
@@ -252,9 +253,8 @@ app.post("/api/send-receipt", async (req, res) => {
       subject: `Order Confirmation - ${order.orderNumber}`,
       html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
         <h2>Order Confirmed</h2>
-        <p>Thank you for your order. Your payment is pending admin verification.</p>
+        <p>Thank you for your order. Your payment of <strong>KES ${Number(order.finalTotal || order.totalAmount).toLocaleString()}</strong> with M-PESA Code <strong>${order.mpesaTransactionId}</strong> is pending admin verification.</p>
         <p><strong>Order ID:</strong> ${order.orderNumber}</p>
-        <p><strong>M-PESA Transaction ID:</strong> ${order.mpesaTransactionId || "N/A"}</p>
       </div>`,
     });
 
@@ -267,33 +267,11 @@ app.post("/api/send-receipt", async (req, res) => {
 
 if (!process.env.VERCEL) {
   async function startServer() {
-    if (process.env.NODE_ENV !== "production") {
-      const { createServer: createViteServer } = await import("vite");
-      const vite = await createViteServer({
-        server: { middlewareMode: true },
-        appType: "spa",
-      });
-
-      app.use(vite.middlewares);
-
-      const PORT = 3000;
-      app.listen(PORT, "0.0.0.0", () => {
-        console.log(`Server running on http://localhost:${PORT}`);
-      });
-    } else {
-      const distPath = path.join(process.cwd(), "dist");
-      app.use(express.static(distPath));
-      app.get("*", (req, res) => {
-        res.sendFile(path.join(distPath, "index.html"));
-      });
-
-      const PORT = 3000;
-      app.listen(PORT, "0.0.0.0", () => {
-        console.log(`Server running on http://localhost:${PORT}`);
-      });
-    }
+    const PORT = 3000;
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
   }
-
   startServer();
 }
 
