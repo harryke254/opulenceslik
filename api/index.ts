@@ -6,145 +6,265 @@ import "dotenv/config";
 const app = express();
 app.use(express.json());
 
-// API Routes
-app.get("/api/health", (req, res) => {
-  const allKeys = Object.keys(process.env);
-  console.log("Health check - All env keys:", allKeys);
-  res.json({ 
-    status: "ok", 
-    env: process.env.NODE_ENV, 
-    emailConfigured: !!(process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD),
-    emailUser: process.env.EMAIL_USER || "opulenceslik7@gmail.com",
-    availableKeys: allKeys.filter(k => k.toLowerCase().includes('email')),
-    allKeysCount: allKeys.length,
-    sampleKeys: allKeys.slice(0, 10) // Show first 10 keys to see naming convention
-  });
-});
+const ADMIN_EMAIL = "opulenceslik@gmail.com";
+const MPESA_TILL_NUMBER = "5348124";
+const MPESA_PAYMENT_METHOD = "M-PESA Buy Goods and Services";
 
-app.post("/api/send-receipt", async (req, res) => {
-  const { order, customerEmail } = req.body;
-  console.log(`Attempting to send email to ${customerEmail} for order ${order?.orderNumber}`);
+type OrderItem = {
+  name: string;
+  quantity: number;
+  price: number;
+};
 
-  if (!order || !customerEmail) {
-    console.error("Missing order or customer email in request body");
-    return res.status(400).json({ error: "Missing order or customer email" });
+type OrderInput = {
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  deliveryAddress: string;
+  totalAmount: number;
+  items: OrderItem[];
+  mpesaTransactionId: string;
+};
+
+function normalizeMpesaTransactionId(value: string) {
+  return String(value || "").trim();
+}
+
+function validateOrderInput(payload: Partial<OrderInput>) {
+  if (!payload.customerName || !payload.customerEmail || !payload.deliveryAddress) {
+    return "Customer name, email, and delivery address are required.";
   }
 
-  const emailUser = (process.env.EMAIL_USER || "opulenceslik7@gmail.com").trim();
-  const emailPass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || "pvkp mmvk vluh jmgk")?.trim();
+  if (!payload.items || !Array.isArray(payload.items) || payload.items.length === 0) {
+    return "Order items are required.";
+  }
 
-  console.log("Attempting to send email...");
-  console.log("EMAIL_USER present:", !!process.env.EMAIL_USER);
-  console.log("EMAIL_PASS present:", !!process.env.EMAIL_PASS);
-  console.log("EMAIL_PASSWORD present:", !!process.env.EMAIL_PASSWORD);
-  console.log("Using fallback password:", !process.env.EMAIL_PASS && !process.env.EMAIL_PASSWORD);
+  if (!payload.totalAmount || Number(payload.totalAmount) <= 0) {
+    return "Total amount must be greater than zero.";
+  }
+
+  const txId = normalizeMpesaTransactionId(payload.mpesaTransactionId || "");
+  if (!txId) {
+    return "M-PESA transaction ID is required.";
+  }
+
+  // Optional format validation
+  if (!/^[A-Za-z0-9]+$/i.test(txId)) {
+    return "M-PESA transaction ID is invalid.";
+  }
+
+  return null;
+}
+
+function buildAdminOrderEmailHtml(order: any) {
+  const itemsHtml = order.items
+    .map(
+      (item: any) =>
+        `<tr>
+          <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name} x ${item.quantity}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">KES ${Number(item.price * item.quantity).toLocaleString()}</td>
+        </tr>`
+    )
+    .join("");
+
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: auto; border: 1px solid #eee; padding: 24px; border-radius: 12px;">
+      <h2 style="color: #110A08;">New M-PESA Order Pending Verification</h2>
+
+      <p><strong>Order ID / Reference:</strong> ${order.orderNumber}</p>
+      <p><strong>Payment Method:</strong> ${MPESA_PAYMENT_METHOD}</p>
+      <p><strong>Till Number:</strong> ${MPESA_TILL_NUMBER}</p>
+      <p><strong>M-PESA Transaction ID:</strong> ${order.mpesaTransactionId}</p>
+      <p><strong>Payment Status:</strong> Pending Admin Verification</p>
+      <p><strong>Order Status:</strong> Processing</p>
+
+      <div style="margin-top: 20px; background: #fdfbf7; padding: 16px; border-radius: 10px;">
+        <h3 style="margin: 0 0 10px 0; color: #110A08;">Customer Details</h3>
+        <p><strong>Name:</strong> ${order.customerName}</p>
+        <p><strong>Email:</strong> ${order.customerEmail}</p>
+        <p><strong>Phone:</strong> ${order.customerPhone || "N/A"}</p>
+        <p><strong>Delivery Address:</strong> ${order.deliveryAddress}</p>
+      </div>
+
+      <table style="width: 100%; margin-top: 24px; border-collapse: collapse;">
+        <thead>
+          <tr style="background: #110A08; color: white;">
+            <th style="padding: 10px; text-align: left;">Item</th>
+            <th style="padding: 10px; text-align: right;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+
+      <div style="margin-top: 30px; text-align: right;">
+        <p><strong>Total Amount Paid:</strong> KES ${Number(order.totalAmount).toLocaleString()}</p>
+      </div>
+    </div>
+  `;
+}
+
+async function sendAdminEmail(order: any) {
+  const emailUser = (process.env.EMAIL_USER || "opulenceslik7@gmail.com").trim();
+  const emailPass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || "").trim();
 
   if (!emailPass) {
-    console.error("EMAIL_PASS or EMAIL_PASSWORD environment variable is NOT set");
-    console.log("Current env keys:", Object.keys(process.env).filter(k => k.includes('EMAIL')));
-    return res.status(500).json({ 
-      error: "Email service not configured (missing password)",
-      debug: {
-        hasUser: !!process.env.EMAIL_USER,
-        hasPass: !!process.env.EMAIL_PASS,
-        hasPassword: !!process.env.EMAIL_PASSWORD,
-        keys: Object.keys(process.env).filter(k => k.toLowerCase().includes('email')),
-        allKeysCount: Object.keys(process.env).length,
-        sampleKeys: Object.keys(process.env).slice(0, 10)
-      }
-    });
+    throw new Error("Email service not configured");
   }
-
-  console.log(`Using email user: ${emailUser}`);
 
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
-    secure: true, // use SSL
+    secure: true,
     auth: {
       user: emailUser,
       pass: emailPass,
     },
   });
 
-  // Verify connection configuration
-  try {
-    await transporter.verify();
-    console.log("Nodemailer transporter verified successfully");
-  } catch (verifyError) {
-    console.error("Nodemailer verification failed:", verifyError);
-    return res.status(500).json({ error: "Failed to connect to email service", details: verifyError instanceof Error ? verifyError.message : String(verifyError) });
-  }
+  await transporter.verify();
 
-  const itemsHtml = order.items.map((item: any) => `
-    <tr>
-      <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.name} x ${item.quantity}</td>
-      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">KES ${item.price * item.quantity}</td>
-    </tr>
-  `).join("");
-
-  const mailOptions = {
+  await transporter.sendMail({
     from: `"Opulence Slik" <${emailUser}>`,
-    to: customerEmail,
-    subject: `Order Confirmation - ${order.orderNumber}`,
-    html: `
-      <div style="font-family: serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
-        <h2 style="text-align: center; color: #110A08;">Order Confirmed</h2>
-        <p style="text-align: center; color: #D4AF37; font-weight: bold; letter-spacing: 2px;">THANK YOU FOR CHOOSING OPULENCE SLIK</p>
-        
-        <div style="margin-top: 30px;">
-          <p><strong>Order Number:</strong> ${order.orderNumber}</p>
-          <p><strong>Date:</strong> ${new Date(order.date).toLocaleDateString()}</p>
-        </div>
-
-        <div style="margin-top: 30px; background: #fdfbf7; padding: 15px; border-radius: 10px;">
-          <h3 style="margin-top: 0; color: #110A08;">Delivery Details</h3>
-          <p><strong>Name:</strong> ${order.customerName}</p>
-          <p><strong>Phone:</strong> ${order.customerPhone}</p>
-          <p><strong>Address:</strong> ${order.deliveryZone} - ${order.deliveryAddress}</p>
-        </div>
-
-        <table style="width: 100%; margin-top: 30px; border-collapse: collapse;">
-          <thead>
-            <tr style="background: #110A08; color: white;">
-              <th style="padding: 10px; text-align: left;">Item</th>
-              <th style="padding: 10px; text-align: right;">Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
-        </table>
-
-        <div style="margin-top: 30px; text-align: right;">
-          <p><strong>Subtotal:</strong> KES ${order.total}</p>
-          <p><strong>Delivery Fee:</strong> ${order.deliveryFee === 0 ? 'Free' : `KES ${order.deliveryFee}`}</p>
-          <p style="font-size: 20px; color: #D4AF37;"><strong>Total: KES ${order.finalTotal}</strong></p>
-        </div>
-
-        <div style="margin-top: 40px; text-align: center; font-size: 12px; color: #888;">
-          <p>Opulence Slik - Luxury Redefined</p>
-        </div>
-      </div>
+    to: ADMIN_EMAIL,
+    subject: `New M-PESA Pending Order - ${order.orderNumber}`,
+    html: buildAdminOrderEmailHtml(order),
+    text: `
+Order ID / Reference: ${order.orderNumber}
+Customer: ${order.customerName}
+Email: ${order.customerEmail}
+Phone: ${order.customerPhone || "N/A"}
+Delivery Address: ${order.deliveryAddress}
+Total Amount Paid: KES ${Number(order.totalAmount).toLocaleString()}
+M-PESA Transaction ID: ${order.mpesaTransactionId}
+Items:
+${order.items.map((item: any) => `- ${item.name} x ${item.quantity} = KES ${Number(item.price * item.quantity).toLocaleString()}`).join("\n")}
     `,
-  };
+  });
+}
 
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    env: process.env.NODE_ENV,
+    emailConfigured: !!(process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD),
+    emailUser: process.env.EMAIL_USER || "opulenceslik7@gmail.com",
+  });
+});
+
+app.post("/api/checkout/manual-mpesa", async (req, res) => {
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully:", info.messageId);
-    res.json({ success: true, messageId: info.messageId });
+    const payload = req.body as Partial<OrderInput>;
+
+    const validationError = validateOrderInput(payload);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    const orderNumber =
+      payload.customerEmail
+        ? `OS-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+        : `OS-${Date.now()}`;
+
+    const order = {
+      orderNumber,
+      customerName: payload.customerName,
+      customerEmail: payload.customerEmail,
+      customerPhone: payload.customerPhone || "",
+      deliveryAddress: payload.deliveryAddress,
+      totalAmount: Number(payload.totalAmount),
+      mpesaTransactionId: String(payload.mpesaTransactionId).trim(),
+      items: payload.items,
+      paymentStatus: "Pending Admin Verification",
+      orderStatus: "Processing",
+      paymentMethod: MPESA_PAYMENT_METHOD,
+      tillNumber: MPESA_TILL_NUMBER,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Save to your database here
+    // Example:
+    // await Order.create({
+    //   orderNumber: order.orderNumber,
+    //   customerName: order.customerName,
+    //   customerEmail: order.customerEmail,
+    //   customerPhone: order.customerPhone,
+    //   deliveryAddress: order.deliveryAddress,
+    //   totalAmount: order.totalAmount,
+    //   mpesaTransactionId: order.mpesaTransactionId,
+    //   items: order.items,
+    //   paymentStatus: "Pending Admin Verification",
+    //   orderStatus: "Processing"
+    // });
+
+    await sendAdminEmail(order);
+
+    return res.status(201).json({
+      success: true,
+      message: "Order submitted successfully. Pending admin verification.",
+      order: {
+        orderNumber: order.orderNumber,
+        paymentStatus: order.paymentStatus,
+        orderStatus: order.orderStatus,
+      },
+    });
   } catch (error) {
-    console.error("Error sending email:", error);
-    res.status(500).json({ 
-      error: "Failed to send email", 
+    console.error("checkout/manual-mpesa error:", error);
+    return res.status(500).json({
+      error: "Failed to process order",
       details: error instanceof Error ? error.message : String(error),
-      code: (error as any).code,
-      command: (error as any).command
     });
   }
 });
 
-// Vite / Static serving for non-Vercel environments
+app.post("/api/send-receipt", async (req, res) => {
+  const { order, customerEmail } = req.body;
+
+  if (!order || !customerEmail) {
+    return res.status(400).json({ error: "Missing order or customer email" });
+  }
+
+  // Keep it for customer email if you still use it, but the new requirement is admin notification
+  try {
+    const emailUser = (process.env.EMAIL_USER || "opulenceslik7@gmail.com").trim();
+    const emailPass = (process.env.EMAIL_PASS || process.env.EMAIL_PASSWORD || "").trim();
+
+    if (!emailPass) {
+      return res.status(500).json({ error: "Email service not configured" });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: emailUser,
+        pass: emailPass,
+      },
+    });
+
+    await transporter.verify();
+
+    await transporter.sendMail({
+      from: `"Opulence Slik" <${emailUser}>`,
+      to: customerEmail,
+      subject: `Order Confirmation - ${order.orderNumber}`,
+      html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+        <h2>Order Confirmed</h2>
+        <p>Thank you for your order. Your payment is pending admin verification.</p>
+        <p><strong>Order ID:</strong> ${order.orderNumber}</p>
+        <p><strong>M-PESA Transaction ID:</strong> ${order.mpesaTransactionId || "N/A"}</p>
+      </div>`,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("send-receipt error:", error);
+    res.status(500).json({ error: "Failed to send receipt" });
+  }
+});
+
 if (!process.env.VERCEL) {
   async function startServer() {
     if (process.env.NODE_ENV !== "production") {
@@ -153,26 +273,27 @@ if (!process.env.VERCEL) {
         server: { middlewareMode: true },
         appType: "spa",
       });
+
       app.use(vite.middlewares);
-      
+
       const PORT = 3000;
       app.listen(PORT, "0.0.0.0", () => {
         console.log(`Server running on http://localhost:${PORT}`);
       });
     } else {
-      // Standard production environment (not Vercel)
-      const distPath = path.join(process.cwd(), 'dist');
+      const distPath = path.join(process.cwd(), "dist");
       app.use(express.static(distPath));
-      app.get('*', (req, res) => {
-        res.sendFile(path.join(distPath, 'index.html'));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
       });
-      
+
       const PORT = 3000;
       app.listen(PORT, "0.0.0.0", () => {
         console.log(`Server running on http://localhost:${PORT}`);
       });
     }
   }
+
   startServer();
 }
 
