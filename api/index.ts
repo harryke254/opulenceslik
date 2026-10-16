@@ -7,14 +7,12 @@ import "dotenv/config";
 // Initialize Firebase Admin SDK for serverless/backend use
 if (!admin.apps.length) {
   try {
-    // If you have a service account JSON file configured via environment variable:
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       });
     } else {
-      // Fallback to default initialization (or environment variables)
       admin.initializeApp({
         credential: admin.credential.applicationDefault()
       });
@@ -192,14 +190,14 @@ app.post("/api/checkout/manual-mpesa", async (req, res) => {
       createdAt: new Date().toISOString(),
     };
 
-    // 1. Save order to Firestore Database securely on the server
+    // Save order to Firestore Database securely on the server
     if (db) {
       await db.collection("orders").doc(orderNumber).set(orderData);
     } else {
-      console.warn("Firestore database not initialized. Order stored in memory/skipped DB write.");
+      console.warn("Firestore database not initialized.");
     }
 
-    // 2. Send Email Notification to Admin
+    // Send Email Notification to Admin
     await sendAdminEmail(orderData);
 
     return res.status(201).json({
