@@ -1,11 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
-import { formatPrice, saveOrder, getDeliveryLocations, handleFirestoreError, OperationType } from '../lib/storage';
-import { DeliveryLocation, Order } from '../types';
+import { formatPrice } from '../lib/storage';
+import { Order } from '../types';
 import { X, Minus, Plus, ShoppingBag, ArrowRight, CheckCircle2, ArrowLeft, MapPin, CreditCard, Truck } from 'lucide-react';
 import { useStoreSettings } from '../hooks/useStoreSettings';
-import { db } from '../firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
 
 const KENYAN_AREAS = [
   "Nairobi - CBD", "Nairobi - Westlands", "Nairobi - Kilimani", "Nairobi - Karen", "Nairobi - Langata",
@@ -23,7 +21,6 @@ export default function Cart() {
   const { items, removeFromCart, updateQuantity, total, isCartOpen, setIsCartOpen, clearCart } = useCart();
   const [showReceipt, setShowReceipt] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | ''>('mpesa');
   const [mpesaTransactionId, setMpesaTransactionId] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [view, setView] = useState<'cart' | 'checkout'>('cart');
@@ -35,7 +32,6 @@ export default function Cart() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<any>(null);
   const { logoUrl } = useStoreSettings();
-  const receiptRef = useRef<HTMLDivElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,53 +93,68 @@ export default function Cart() {
     
     setIsProcessingPayment(true);
 
-    const orderNum = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
-    const newOrder: Order = {
-      id: orderNum,
-      orderNumber: orderNum,
-      date: new Date().toISOString(),
-      items: [...items],
-      total,
-      deliveryFee,
-      finalTotal,
+    const orderPayload = {
       customerName,
-      customerPhone,
       customerEmail,
-      deliveryZone: deliveryZoneName,
+      customerPhone,
       deliveryAddress,
-      paymentMethod: 'mpesa',
-      mpesaTransactionId: mpesaTransactionId.trim().toUpperCase(),
-      status: 'pending' // Admin will need to verify and approve
+      totalAmount: finalTotal,
+      items: items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      mpesaTransactionId: mpesaTransactionId.trim()
     };
 
     try {
-      // 1. Save to Firestore (Fast)
-      await saveOrder(newOrder);
-      
-      // 2. Clear cart and show success UI IMMEDIATELY after save
-      setConfirmedOrder(newOrder);
-      setOrderNumber(orderNum);
+      // Send data to backend API route for validation, database storage & admin email notification
+      const response = await fetch('/api/checkout/manual-mpesa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderPayload)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit order');
+      }
+
+      const currentOrder = {
+        orderNumber: data.order.orderNumber,
+        date: new Date().toISOString(),
+        items: [...items],
+        total,
+        deliveryFee,
+        finalTotal,
+        customerName,
+        customerPhone,
+        customerEmail,
+        deliveryZone: deliveryZoneName,
+        deliveryAddress,
+        paymentMethod: 'M-PESA Buy Goods and Services',
+        tillNumber: '5348124',
+        mpesaTransactionId: mpesaTransactionId.trim().toUpperCase(),
+        status: data.order.paymentStatus
+      };
+
+      setConfirmedOrder(currentOrder);
+      setOrderNumber(data.order.orderNumber);
       setShowReceipt(true);
       clearCart();
       setIsProcessingPayment(false);
 
-      // 3. Send email receipt in the background (Slow, don't await)
+      // Trigger optional customer receipt email in the background
       fetch('/api/send-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order: newOrder, customerEmail })
-      }).catch(error => console.error('Background email receipt failed:', error));
+        body: JSON.stringify({ order: currentOrder, customerEmail })
+      }).catch(error => console.error('Background customer receipt failed:', error));
 
-      // 4. Also trigger notification email to admin (opulenceslik@gmail.com)
-      fetch('/api/send-admin-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order: newOrder })
-      }).catch(error => console.error('Background admin notification failed:', error));
-
-    } catch (error) {
+    } catch (error: any) {
       console.error('Order placement failed:', error);
-      alert('Something went wrong while placing your order. Please try again.');
+      alert(error.message || 'Something went wrong while placing your order. Please try again.');
       setIsProcessingPayment(false);
     }
   };
@@ -235,7 +246,7 @@ export default function Cart() {
                     <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#110A08] border-b border-[#110A08]/5 pb-4">Order Summary</h3>
                     <div className="space-y-4">
                       {confirmedOrder.items.map((item: any) => (
-                        <div key={item.id} className="flex justify-between text-sm items-center">
+                        <div key={item.id || item.name} className="flex justify-between text-sm items-center">
                           <div className="flex gap-4 items-center">
                             <span className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-[10px] font-bold text-[#110A08]">
                               {item.quantity}
